@@ -73,27 +73,6 @@ total = sorted(
     glob(f"*/key_frame_reps-{dims}.pkl"), key=lambda x: x.split("/")[0])[:]
 
 
-def get_hist(dimension, frame_idx, vpath, gray=True):
-    '''
-    Util function when we wanna add in the histogram
-    @parameters:
-    ------------
-    dimensions: bins for the histogram
-    frame_idx: frame idx in the video
-    vpath: the path for the video file
-    '''
-    video_reel = cv2.VideoCapture(vpath)
-    video_reel.set(1, frame_idx)
-    suc, image = video_reel.read()
-    if suc:
-        if gray:
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-        hist = cv2.calcHist([image], [0], None, [dimension], [0, 256])
-        return hist
-    else:
-        return None
-
 # with tqdm(total=len(frame_reps_path)) as progress:
 #     for vecs_path, frame_idxs_path in zip(frame_reps_path, frame_idxs_path):
 

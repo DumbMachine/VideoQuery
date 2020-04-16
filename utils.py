@@ -1,4 +1,5 @@
 import os
+import cv2
 import pickle
 import random
 import imageio
@@ -188,6 +189,71 @@ def get_key_from_batch(something):
     return fnos, frame_vecs
 
 
+
+
+def save_vec_with_histograms(filename):
+    """Save the frame vectors with the corressponding histogram
+
+    Arguments:
+        obj {list} -- list of a few values required
+    """
+    dims = 12
+    vpath = os.path.join(FRAME_VIDEO_PATH + f"/{filename}")
+    vecs_path = os.path.join(FRAME_VECTORS_PATH + f"/{filename.replace('.avi', '.pkl')}")
+    frame_idxs_path = os.path.join(FRAME_NUMBER_PATH + f"/{filename.replace('.avi', '.pkl')}")
+
+    vecs = pickle.load(open(vecs_path, "rb"))
+    frame_idxs = pickle.load(open(frame_idxs_path, "rb"))
+    savename = filename.replace(".avi", f"-{dims}.pkl")
+
+    if os.path.isfile(filename):
+        return
+
+    vecs_hist = []
+    if vecs and frame_idxs:
+        for vec, idx in zip(vecs, frame_idxs):
+            # TODO: Check for error here, if None is returned from hist
+            hist = get_hist(dims, idx, vpath).reshape(dims)
+            vec = np.append(vec, hist)
+            vecs_hist.append(
+                vec
+            )
+
+        directory = os.path.join(DATA_PATH, f"vectors-{dims}")
+        if not os.path.isdir(directory):
+            os.makedirs(directory)
+
+        pickle.dump(
+            vecs_hist, open(os.path.join(directory, savename), "wb")
+        )
+
+def get_hist(dimension, frame_idx, vpath, gray=True):
+    """Util function when we wanna add in the histogram
+
+    Arguments:
+        dimension {int} -- bins for the histogram
+        frame_idx {int} -- frame_idx in the video
+        vpath {string} -- Path of the video
+
+    Keyword Arguments:
+        gray {bool} -- grayscale  (default: {True})
+
+    Returns:
+        [type] -- [description]
+    """
+    video_reel = cv2.VideoCapture(vpath)
+    video_reel.set(1, frame_idx)
+    suc, image = video_reel.read()
+    if suc:
+        if gray:
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+        hist = cv2.calcHist([image], [0], None, [dimension], [0, 256])
+        return hist
+    else:
+        return []
+
+
 def fn(output_dict, category_index):
     """[summary]
 
@@ -231,7 +297,7 @@ def search(biglist, smallist):
             return i, biglist[i].index(smallist)
     return None, None
 
-
+# FIXME: This needs to be fized, get_batch was changed
 def compare_segments(batch=[], frames=[], frame_size=3, save=True, filename="test_comparison.mp4"):
     """Will compare the original video with the key frames obtained from the video
 

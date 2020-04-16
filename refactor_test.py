@@ -7,10 +7,9 @@ import random
 
 from glob import glob
 
-from utils import FRAME_ANNOTATION_PATH, key_frames_parallel
+from utils import FRAME_VIDEO_PATH
 
-files = glob(FRAME_ANNOTATION_PATH+"/*.pkl")
+files = glob(FRAME_VIDEO_PATH+"/*.avi")
 file = random.choice(files)
 
-# checking if the extraction of key_frames is working as required
-key_frames_parallel(path=file)
+filename = file
