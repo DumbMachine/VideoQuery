@@ -15,6 +15,17 @@ from tqdm import tqdm_notebook as tqdm
 CATEGORY_INDEX = "/kaggle/input/category-index/category_index.pkl"
 
 
+import os
+import cv2
+import pickle
+import pathlib
+
+import numpy as np
+import tensorflow as tf
+
+from tqdm import tqdm_notebook as tqdm
+CATEGORY_INDEX = "/kaggle/input/category-index/category_index.pkl"
+
 class FrameLoader:
     """
     Class to load the video frames and apply the appropriate processing to obtain the vectors from each frame
@@ -23,6 +34,8 @@ class FrameLoader:
             self,
             path=None,
             model=None,
+            batch_size=256,
+            filename=None,
             verbose=1
     ):
         """
@@ -30,6 +43,8 @@ class FrameLoader:
         path: the path of the file to be load as video
         """
         self.path = path
+        self.batch_size = batch_size
+        self.filename = filename
         if model is None:
             self.model = self.load_model()
         else:
@@ -40,11 +55,10 @@ class FrameLoader:
             "frames": []
         }
         # loading the video frames:
-        self._create_progress()
         self.category_index = pickle.load(open(CATEGORY_INDEX, 'rb'))
 
     # TODO: Update the `total` varaible with the total number of steps
-    def _create_progress(self):
+    def _create_progress(self, total=None):
         """
         logging the total process of creation of frames and other things like that
         steps in this btich:
@@ -55,7 +69,10 @@ class FrameLoader:
         """
         if self.verbose == 1:
             # creating the normal thing
-            self.progress = tqdm(total=5)
+            if self.batch_size > self.fnos:
+                self.progress = tqdm(total=total)
+            else:
+                self.progress = tqdm(total=int(total/256))
 
 
     def _read_video(self):
@@ -72,6 +89,7 @@ class FrameLoader:
 
         self.fnos = int(video_reel.get(cv2.CAP_PROP_FRAME_COUNT))
         self.fps = int(video_reel.get(cv2.CAP_PROP_FPS))
+        self._create_progress(total=self.fnos)
         succ, frame = video_reel.read()
         curr_frame_no = 0
         if self.verbose == 1:
@@ -107,16 +125,45 @@ class FrameLoader:
 
         return model
 
-    # TODO: Build a video streamer (generator)
-    def build_annotations(self, batch_size=256, filename=None):
-        """Build the pkl file which has the object appearance information from each frame
+    def stream_annotations(self):
+        """Stream the video as a generator and then retrieve the annotations from it
 
-        Keyword Arguments:
-            batch_size {int} -- length of images to be processed as a batch by the model (default: {256})
+        Arguments:
+            batch_size {int} -- The amount of frames to be processed at once
         """
-        frames = self._read_video()
+        if self.path:
+            video_reel = cv2.VideoCapture(self.path)
+        else:
+            raise Exception("There was an error with the video path: ", self.path)
 
-        if len(frames) < batch_size:
+        self.fps = int(video_reel.get(cv2.CAP_PROP_FPS))
+        self.fnos = int(video_reel.get(cv2.CAP_PROP_FRAME_COUNT))
+        self._create_progress(total=self.fno)
+        start = 0
+        for end in range(self.batch_size, fnos, self.batch_size):
+            # getting the batch of images
+            frames = self._read_video_in_batches(self, video_reel)
+            self.build_annotations(frames)
+
+    def _read_video_in_batches(self, video_reel):
+        """Read the batch frames from the video reel`
+
+        Arguments:
+            video_reel {cv2.VideoCaputre} --The video real from which the video is to be read
+        """
+        frames = []
+        for _ in range(self.batch_size):
+            frame, success = video_reel.read()
+            frames.append(frame)
+        return frames
+
+
+    # TODO: Build a video streamer (generator)
+    def build_annotations(self, frames):
+        """Build the pkl file which has the object appearance information from each frame
+        """
+
+        if len(frames) < self.batch_size:
             input_tensor = tf.convert_to_tensor(np.asarray(frames))
             prediction = self.model(input_tensor)
 
@@ -131,12 +178,13 @@ class FrameLoader:
                         "annotations": fn(output_dict, self.category_index)
                     }
                 )
+                self.progress.update(1)
 
         else:
             start = 0
             predictions = []
 
-            for end in range(batch_size, len(frames), batch_size):
+            for end in range(self.batch_size, len(frames), self.batch_size):
                 input_tensor = tf.convert_to_tensor(
                     np.asarray(frames[start: end])
                 )
@@ -155,9 +203,10 @@ class FrameLoader:
                     )
 
                 start = end
+                self.progress.update(1)
 
-        if filename:
-            path = filename
+        if self.filename:
+            path = self.filename
         else:
             path = self.path
 

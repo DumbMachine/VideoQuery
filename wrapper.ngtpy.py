@@ -16,6 +16,7 @@ from pathlib import Path
 import cv2
 import imageio
 import matplotlib.pyplot as plt
+import ngtpy
 import numpy as np
 import pafy
 import pandas as pd
@@ -27,7 +28,6 @@ from PIL import Image, ImageDraw
 from sklearn.cluster import KMeans
 from tqdm import tqdm
 
-import ngtpy
 dims = 12
 '''
 Making the dataset:
@@ -55,14 +55,15 @@ class VideoEngine:
     '''
     Class Object used to create the video search engine
     '''
-    def __init__(self, directory):
+    def __init__(self, fnos_directory, vecs_directory):
         '''
         Some string
         '''
         self.DIMS = 6
         self.MAX_INDEXES = 40
 
-        self.directory = directory
+        self.fnos_directory = fnos_directory
+        self.vecs_directory = vecs_directory
         self.mapping = {}
         self.INDX = {}
         self.DATA = {}
@@ -78,7 +79,7 @@ class VideoEngine:
         print("building dataset")
         # for path in glob("*frame_vectors.pkl"):
         for frame_idxs_path, vecs_path in zip(
-            sorted(glob(self.directory + "/*key_frame_indexes.pkl")), sorted(glob(self.directory + f"/*frame_reps-{dims}"))):
+            sorted(glob(self.fnos_directory + "/*.pkl")), sorted(glob(self.vecs_directory + f"/*.pkl"))):
         # for path in directory.glob("/*frame_vectors.pkl"):
             vecs = pickle.load(open(vecs_path, "rb"))
             frame_idxs = pickle.load(open(frame_idxs_path, "rb"))
@@ -88,7 +89,6 @@ class VideoEngine:
                 print(vecs_path)
                 for vec, frame_idx in zip(vecs, frame_idxs):
                     # Each vec object will have 2 frames and thus 2 frame vectors
-                    print(len(vec))
                     # try:
                     self.DATA[len(vec)].append(vec)
                 # self.mapping[str(path).split('/')[-2]].append(
@@ -349,44 +349,27 @@ def load_model(
 
     return model
 
-# engine = VideoEngine(os.path.join(
-#     os.path.expanduser("~"),
-#     "friends_new",
-#     "friends"
-# ))
-engine = VideoEngine(".data/results")
+
+
+engine = VideoEngine(
+    fnos_directory="/home/dumbmachine/code/SVMWSN/.data/frame_numbers",
+    vecs_directory="/home/dumbmachine/code/SVMWSN/.data/vectors-18"
+)
 engine.build_indexes()
 engine.build_dataset()
 engine.insert_dataset()
 
-plus = 0
-query_clips = random.sample([_ath for _ath in glob(".data/results/*frame_reps-12")], 100)
-for intr, query_clip in enumerate(query_clips):
-    print(intr, len(query_clips))
-    vectors = pickle.load(open(query_clip, "rb"))
-    if len(vectors):
-        engine.search_vectors(query_row=vectors[0])
-        predictions = [i[0] for i in engine.temp]
-        if query_clip in predictions:
-            plus+=1
 
-# print(plus/len(query_clip))
-# engine.INDX[6].get_object(0)
+def test_something():
+    plus = 0
+    query_clips = random.sample([_ath for _ath in glob("/home/dumbmachine/code/SVMWSN/.data/vectors-18/*")], 1000)
+    for intr, query_clip in enumerate(query_clips):
+        print(intr, len(query_clips))
+        vectors = pickle.load(open(query_clip, "rb"))
+        if len(vectors):
+            engine.search_vectors(query_row=vectors[0])
+            predictions = [i[0] for i in engine.temp]
+            if query_clip in predictions:
+                plus+=1
 
-# # model = load_model()
-# category_index = pickle.load(open(os.path.join
-#             (os.path.expanduser("~"), "youtube", "category_index.pkl"), "rb"
-#             )
-#         )
-
-# # loading a random videos vectors:
-# query_clip = random.choice([_ath for _ath in glob(".data/results/*key_frame_reps.pkl")])
-
-
-
-
-# engine.search_clip(query_clip, model)
-# print(query_clip)
-# list(engine.output.items())[:3]
-
-
+    print(plus/len(query_clips))

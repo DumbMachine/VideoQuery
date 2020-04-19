@@ -38,40 +38,61 @@ def index_dataset_from_folder(folder):
         key_frames_parallel(file)
 
 
+# In the iterator, yield the BATCH and not the whole annotations
 def key_frames_parallel(path, n_jobs=-1, FPS=30):
     """
     Parallelize the clustering using Joblib
     """
-    # In the iterator, yield the BATCH and not the whole annotations
+
+    filename = path.split("/")[-1].split(".")[0]
+    # checking if the files already exist
+    patha = [os.path.join(FRAME_VECTORS_PATH, filename+".pkl-failed"),
+             os.path.join(FRAME_NUMBER_PATH, filename+".pkl-failed")]
+    pathb = [os.path.join(FRAME_VECTORS_PATH, filename+".pkl"),
+             os.path.join(FRAME_NUMBER_PATH, filename+".pkl")]
+    patha = [os.path.isfile(file) for file in patha]
+    pathb = [os.path.isfile(file) for file in pathb]
+
+    if patha == [True, True] or pathb == [True, True]:
+        print("skipping the files")
+        return
+
     annotations = pickle.load(open(path, "rb"))
     category_index = pickle.load(open(CATEGORY_INDEX, "rb"))
     arg_instances = [(start, annotations['frames'][start: start+FPS])
                      for start in range(0, len(annotations['frames']), FPS)]
+
     results = Parallel(n_jobs=-1, verbose=0, backend="loky")(
         map(delayed(get_key_from_batch), arg_instances))
 
     vecs = []
     fidxs = []
+    if results is None:
+        pickle.dump(
+            vecs,
+            open(os.path.join(FRAME_VECTORS_PATH, filename+".pkl-failed"), "wb")
+        )
+        pickle.dump(
+            fidxs,
+            open(os.path.join(FRAME_NUMBER_PATH, filename+".pkl-failed"), "wb")
+        )
 
-    for idx, vec in results:
-        if idx is not None and vec is not None:
-            vecs.extend(vec)
-            fidxs.extend(idx)
+    else:
+        for idx, vec in results:
+            if idx is not None and vec is not None:
+                vecs.extend(vec)
+                fidxs.extend(idx)
 
-    filename = path.split("/")[-1].split(".")[0]
-
-    pickle.dump(
-        vecs,
-        open(os.path.join(FRAME_VECTORS_PATH, filename+".pkl"), "wb")
-    )
-
-    pickle.dump(
-        fidxs,
-        open(os.path.join(FRAME_NUMBER_PATH, filename+".pkl"), "wb")
-    )
-
-    print("The filenames used by the parallel_operation ",
-          filename, FRAME_VECTORS_PATH, filename+".pkl", FRAME_NUMBER_PATH, filename+".pkl")
+        pickle.dump(
+            vecs,
+            open(os.path.join(FRAME_VECTORS_PATH, filename+".pkl"), "wb")
+        )
+        pickle.dump(
+            fidxs,
+            open(os.path.join(FRAME_NUMBER_PATH, filename+".pkl"), "wb")
+        )
+        # print("The filenames used by the parallel_operation ",
+        #     filename, FRAME_VECTORS_PATH, filename+".pkl", FRAME_NUMBER_PATH, filename+".pkl")
 
 
 def get_key_from_batch(something):
@@ -107,7 +128,8 @@ def get_key_from_batch(something):
 
     information = [temp for temp in information if temp]
     if not information:
-        return []
+        print("this file was wrong")
+        return [], []
     max_objs = max([len(information[i]) for i in range(len(information))])
 
     clustering_data = []
@@ -189,24 +211,25 @@ def get_key_from_batch(something):
     return fnos, frame_vecs
 
 
-
-
 def save_vec_with_histograms(filename):
     """Save the frame vectors with the corressponding histogram
 
     Arguments:
         obj {list} -- list of a few values required
     """
-    dims = 12
+    dims = 18
     vpath = os.path.join(FRAME_VIDEO_PATH + f"/{filename}")
-    vecs_path = os.path.join(FRAME_VECTORS_PATH + f"/{filename.replace('.avi', '.pkl')}")
-    frame_idxs_path = os.path.join(FRAME_NUMBER_PATH + f"/{filename.replace('.avi', '.pkl')}")
+    vecs_path = os.path.join(FRAME_VECTORS_PATH +
+                             f"/{filename.replace('.avi', '.pkl')}")
+    frame_idxs_path = os.path.join(
+        FRAME_NUMBER_PATH + f"/{filename.replace('.avi', '.pkl')}")
 
     vecs = pickle.load(open(vecs_path, "rb"))
     frame_idxs = pickle.load(open(frame_idxs_path, "rb"))
-    savename = filename.replace(".avi", f"-{dims}.pkl")
+    savename = filename.replace(".avi", ".pkl")
+    directory = os.path.join(DATA_PATH, f"vectors-{dims}")
 
-    if os.path.isfile(filename):
+    if os.path.isfile(os.path.join(directory, savename)):
         return
 
     vecs_hist = []
@@ -219,13 +242,13 @@ def save_vec_with_histograms(filename):
                 vec
             )
 
-        directory = os.path.join(DATA_PATH, f"vectors-{dims}")
         if not os.path.isdir(directory):
             os.makedirs(directory)
 
         pickle.dump(
             vecs_hist, open(os.path.join(directory, savename), "wb")
         )
+
 
 def get_hist(dimension, frame_idx, vpath, gray=True):
     """Util function when we wanna add in the histogram
@@ -298,6 +321,8 @@ def search(biglist, smallist):
     return None, None
 
 # FIXME: This needs to be fized, get_batch was changed
+
+
 def compare_segments(batch=[], frames=[], frame_size=3, save=True, filename="test_comparison.mp4"):
     """Will compare the original video with the key frames obtained from the video
 
