@@ -45,6 +45,7 @@ class FrameLoader:
         self.path = path
         self.batch_size = batch_size
         self.filename = filename
+        self.current_frame = 0
         if model is None:
             self.model = self.load_model()
         else:
@@ -138,11 +139,11 @@ class FrameLoader:
 
         self.fps = int(video_reel.get(cv2.CAP_PROP_FPS))
         self.fnos = int(video_reel.get(cv2.CAP_PROP_FRAME_COUNT))
-        self._create_progress(total=self.fno)
+        self._create_progress(total=self.fnos)
         start = 0
-        for end in range(self.batch_size, fnos, self.batch_size):
+        for end in range(self.batch_size, self.fnos, self.batch_size):
             # getting the batch of images
-            frames = self._read_video_in_batches(self, video_reel)
+            frames = self._read_video_in_batches(video_reel)
             self.build_annotations(frames)
 
     def _read_video_in_batches(self, video_reel):
@@ -153,8 +154,10 @@ class FrameLoader:
         """
         frames = []
         for _ in range(self.batch_size):
+            self.progress.set_description(f"[Reading Video] frame number: {self.current_frame + _}")
             frame, success = video_reel.read()
             frames.append(frame)
+        self.current_frame += _
         return frames
 
 
@@ -166,7 +169,7 @@ class FrameLoader:
         if len(frames) < self.batch_size:
             input_tensor = tf.convert_to_tensor(np.asarray(frames))
             prediction = self.model(input_tensor)
-
+            local_counter = 0
             for idx in range(len(prediction['detection_scores'])):
                 output_dict = {
                     "detection_classes": prediction["detection_classes"][idx],
@@ -178,12 +181,14 @@ class FrameLoader:
                         "annotations": fn(output_dict, self.category_index)
                     }
                 )
+                self.progress.set_description(f"Running with the local counter {local_counter}")
+                local_counter += 1
                 self.progress.update(1)
 
         else:
             start = 0
             predictions = []
-
+            local_counter = 0
             for end in range(self.batch_size, len(frames), self.batch_size):
                 input_tensor = tf.convert_to_tensor(
                     np.asarray(frames[start: end])
@@ -201,6 +206,8 @@ class FrameLoader:
                             "annotations": fn(output_dict, self.category_index)
                         }
                     )
+                    self.progress.set_description(f"Running with the local counter {local_counter}")
+                    local_counter += 1
 
                 start = end
                 self.progress.update(1)
@@ -209,6 +216,8 @@ class FrameLoader:
             path = self.filename
         else:
             path = self.path
+
+        path = path+f"{self.current_frame}:{self.current_frame-self.batch_size}"
 
         pickle.dump(
             self.annotations,
