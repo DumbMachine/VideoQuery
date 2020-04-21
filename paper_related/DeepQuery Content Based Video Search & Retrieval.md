@@ -4,25 +4,39 @@ todos:
   1. https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=5729374
   2. 
 
+mention the usage of ssd in testing and things for ngtpy
+
+## Examples:
+
+1. Image lag for **ALGORITHM**:  
+
+   ![image](/home/dumbmachine/code/SVMWSN/paper_related/things/FrameComparison.png)
+
+   
+
 # DeepQuery: Content Based Video Search & Retrieval
 
 ### Abstract:
 
-Digital media, comprised largely of images and videos, has been on the rise in the past decade. Due to its ease of access and efficiency in spreading information, images and videos dominate the [something]. Pixels now have become the currency used by most information transaction on the Internet. 
+Digital media, comprised largely of images and videos, has been on the rise in the past decade. Due to its ease of access and efficiency in spreading information, Pixels now have become the currency used by most information transaction on the Internet. 
 
-We present **DeepQuery** a object detection based deep learning model with leverages the shots/scenes from video clips to generate fixed sized vectors for videos. It offers a solution to efficient solution which balances the precision/accuracy with processing computation.
+We present **DeepQuery** a object detection based deep learning model which leverages the scenes from video clips to generate fixed sized vectors for videos. **These fixed sized vectors are used to retrieve videos from clips**. It offers a solution to efficient solution which balances the precision/accuracy with processing computation.
 
-On both, UFC101 and HDF51 datasets, generates competitive performance in terms of runtime and accuracy. We also show that benefits of using our `algorithm` in a constraint   (simpsons). Code is available at: https://github.com//dumbmachine/`name`
+On both, UFC101 and **a custom dataset containing clips from various tv shows and movies** , generates competitive performance in terms of runtime and accuracy. We also show that benefits of using our `algorithm` in a constraint   (videos). Code is available at: https://github.com//dumbmachine/deepquery
 
-Key words: Content-based video retrieval, object detection, approximate nearest neighbor search.
+Key words: Content-based video retrieval, Video Database, object detection, approximate nearest neighbour search.
 
 ### 1. Introduction:
 
-Video search is a very challenging problem which not only requires alot of processing but storage as well. Internet has seen the sites like Google Images and Tineye which provide the facility to reverse image search, such facilities for reverse searching videos, using small clips or even images are [yet to see the sunshine]. 
+Video search is a very challenging problem which not only requires alot of processing but storage as well. Internet has seen the sites like Google Images and Tineye which provide the facility to reverse image search, such facilities for reverse searching videos using small clips or even images are yet to see the sunshine. 
 
-Amount of information stored in video format is huge. `Youtube gets over 500 hours of video uploaded every minute  [and maybe some other facts]`.  Various industry based archives also exist. 
+Large amount of information is stored in video files as multiple image frames. `Youtube gets over 500 hours of video uploaded every minute  [and maybe some other facts]`.  Various industry based archives also exist. 
 
-Well-established methods for searching and retrieving video content rely on manual annotating, close captioning, audio annotations or using hash bits generated using visual features `give example for each`. Among these for Video hashes have been in research extensively due to their fast searching capabilities.
+Well-established methods for searching and retrieving video content rely on 
+
+1. manually crafted features (Knowledge-Discounted Event Detection in Sports Video)
+2. close captioning (DeepSeek: Content Based Image Search & Retrieval), 
+3. audio annotations or using hash bits generated using visual features `give example for each`. Among these for Video hashes have been in research extensively due to their fast searching capabilities.
 
 However, most current works in scalable visual search focus on image-based retrieval [6]–[14] or text-image/image-text retrieval [15]–[19]. To our best knowledge, there are only few works that present an efficient framework for video hashing.
 
@@ -90,20 +104,28 @@ confidence score, bounding boxes and category of each object in the video frame.
 
 [format for algorithm](https://arxiv.org/pdf/1601.07754v1.pdf)
 
-### Algorithm 1: Film segmentation
+---------------------------------------------------
+-------------------------------------------------------------------------------------------------------------
 
-```python
-S = {s1, s2, ... sN}: Video segments
-F = {fij}: Video frames, where i is the index of video segment and j is the index of the video frame in the segment~i~.
-O = {oijk}: Objects, where k is the index of the object in video frame~i~,in the segment~i~ 
-   
-1. for i=1 to N step 1:
+Algorithm 1 The proposed key frames extraction
+
+--------------------------------------------------------------------------------------------------------
+
+Input: V~i~
+Output: 
+
+FPS** = Fps of the video
+
+**S** = {s1, s2, ... sN}: Segments from the video divided into intervals of its fps
+**F** = {f~ij~}: Video frames, where i is the index of video segment and j (0<j<**FPS**) is the index of the video frame in the segment s~i~.
+O = {o~ijk~}: Objects, where k is the index of the object in video frame~i~,in the segment~i~  
+
+1. **for** i=1 to N step 1:
     F~i~ = GetFramesFromSegment(i)
-    for j=1 to M step 1:
-        f~i~~j~ = GetFrameFromFrames(j)
-        
-  .....
-```
+    **for** j=1 to M step 1:
+        f~ij~ = GetFrameFromFrames(j)
+    
+    ​    
 
 
 
@@ -114,6 +136,12 @@ O = {oijk}: Objects, where k is the index of the object in video frame~i~,in the
 To evaluate the effectiveness of our proposed system for scalable content based video retrieval, we conducted experiments on 3 video datasets. Namely the UCF101, HDF51 and a custom `Rick and Morty dataset`. The details of the experiments and the results are descrived in the following sections.
 
 A. Datasets and Experiments Settings
+
+
+
+B. Pretraining:
+
+: The normal ImageNet Pretraining and the second specific pretraining
 
 [ref](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=7797446&tag=1)
 

@@ -1,7 +1,3 @@
-"""
-modified script to run from kaggle
-"""
-
 import os
 import cv2
 import pickle
@@ -10,32 +6,21 @@ import pathlib
 import numpy as np
 import tensorflow as tf
 
-from tqdm import tqdm_notebook as tqdm
-
-CATEGORY_INDEX = "/kaggle/input/category-index/category_index.pkl"
+from tqdm import tqdm
 
 
-import os
-import cv2
-import pickle
-import pathlib
-
-import numpy as np
-import tensorflow as tf
-
-from tqdm import tqdm_notebook as tqdm
-CATEGORY_INDEX = "/kaggle/input/category-index/category_index.pkl"
 
 class FrameLoader:
     """
     Class to load the video frames and apply the appropriate processing to obtain the vectors from each frame
     """
+
     def __init__(
             self,
             path=None,
             model=None,
             batch_size=256,
-            filename=None,
+            directory="processed",
             verbose=1
     ):
         """
@@ -43,9 +28,11 @@ class FrameLoader:
         path: the path of the file to be load as video
         """
         self.path = path
+        self.save_timeout = 5 # compress the output every 5 iterations
+        self.directory = directory
         self.batch_size = batch_size
-        self.filename = filename
         self.current_frame = 0
+        self.progress = None
         if model is None:
             self.model = self.load_model()
         else:
@@ -73,8 +60,7 @@ class FrameLoader:
             if self.batch_size > self.fnos:
                 self.progress = tqdm(total=total)
             else:
-                self.progress = tqdm(total=int(total/256))
-
+                self.progress = tqdm(total=int(total/self.batch_size))
 
     def _read_video(self):
         """
@@ -84,7 +70,8 @@ class FrameLoader:
         if self.path:
             video_reel = cv2.VideoCapture(self.path)
         else:
-            raise Exception("There was an error with the video path: ", self.path)
+            raise Exception(
+                "There was an error with the video path: ", self.path)
         # else:
         #     video_reel = cv2.VideoCapture(self.path+"/video.mp4")
 
@@ -97,7 +84,8 @@ class FrameLoader:
                 while succ:
                     frames.append(frame)
                     succ, frame = video_reel.read()
-                    self.progress.set_description(f"[FrameReader] reading frame number: {curr_frame_no}")
+                    self.progress.set_description(
+                        f"[FrameReader] reading frame number: {curr_frame_no}")
                     curr_frame_no += 1
         else:
             while succ:
@@ -106,12 +94,29 @@ class FrameLoader:
 
         return frames
 
+    def compress_remove_files(self):
+        """
+        Will compress the files in the self.directory and remove the things from that folder
+        """
+        #  Check if the there is folder already, if it is then compress the files and add to that
+        filename = self.path.split("/")[-1]
+        tarpath = os.path.join(self.directory)
+        if os.path.isfile(f"processed-{filename}.tar"):
+            # append the things in the tarpath
+            os.system(f"tar -uvf processed-{filename}.tar {tarpath}")
+            # clear the things in that folder to save space
+            os.system(f"rm -rf {self.directory}/*")
+        else:
+            # create the tarpath
+            os.system(f"tar -cvf processed-{filename}.tar {tarpath}")
+
+
     def load_model(self):
         """
         Loading a simple Tensorflow ObjectDetction Api model if the user doesn't supply a model
         """
-        model_name="ssd_mobilenet_v1_coco_2018_01_28"
-        path=os.path.expanduser("~")
+        model_name = "ssd_mobilenet_v1_coco_2018_01_28"
+        path = os.path.expanduser("~")
         base_url = 'http://download.tensorflow.org/models/object_detection/'
         model_file = model_name + '.tar.gz'
         model_dir = tf.keras.utils.get_file(
@@ -126,25 +131,35 @@ class FrameLoader:
 
         return model
 
+    def _load_video(self):
+        if self.path:
+            self.video_reel = cv2.VideoCapture(self.path)
+        else:
+            raise Exception(
+                "There was an error with the video path: ", self.path)
+
+        self.fps = int(self.video_reel.get(cv2.CAP_PROP_FPS))
+        self.fnos = int(self.video_reel.get(cv2.CAP_PROP_FRAME_COUNT))
+        self._create_progress(total=self.fnos)
+
     def stream_annotations(self):
         """Stream the video as a generator and then retrieve the annotations from it
 
         Arguments:
             batch_size {int} -- The amount of frames to be processed at once
         """
-        if self.path:
-            video_reel = cv2.VideoCapture(self.path)
-        else:
-            raise Exception("There was an error with the video path: ", self.path)
-
-        self.fps = int(video_reel.get(cv2.CAP_PROP_FPS))
-        self.fnos = int(video_reel.get(cv2.CAP_PROP_FRAME_COUNT))
-        self._create_progress(total=self.fnos)
+        if self.progress is None:
+            self._load_video()
         start = 0
+        save_timeout = 0
         for end in range(self.batch_size, self.fnos, self.batch_size):
             # getting the batch of images
-            frames = self._read_video_in_batches(video_reel)
+            frames = self._read_video_in_batches(self.video_reel)
             self.build_annotations(frames)
+            save_timeout += 1
+            if save_timeout == self.save_timeout:
+                save_timeout = 0
+                self.compress_remove_files()
 
     def _read_video_in_batches(self, video_reel):
         """Read the batch frames from the video reel`
@@ -154,70 +169,47 @@ class FrameLoader:
         """
         frames = []
         for _ in range(self.batch_size):
-            self.progress.set_description(f"[Reading Video] frame number: {self.current_frame + _}")
-            frame, success = video_reel.read()
+            self.progress.set_description(
+                f"[Reading Video] frame number: {self.current_frame + _}")
+            success, frame = video_reel.read()
+            if not success:
+                raise Exception("All the frames have finished")
             frames.append(frame)
         self.current_frame += _
         return frames
 
-
     # TODO: Build a video streamer (generator)
+
     def build_annotations(self, frames):
         """Build the pkl file which has the object appearance information from each frame
         """
+        predictions = []
+        input_tensor = tf.convert_to_tensor(
+            np.asarray(frames)
+        )
+        prediction = self.model(input_tensor)
 
-        if len(frames) < self.batch_size:
-            input_tensor = tf.convert_to_tensor(np.asarray(frames))
-            prediction = self.model(input_tensor)
-            local_counter = 0
-            for idx in range(len(prediction['detection_scores'])):
-                output_dict = {
-                    "detection_classes": prediction["detection_classes"][idx],
-                    "detection_scores": prediction["detection_scores"][idx],
-                    "detection_boxes": prediction["detection_boxes"][idx].numpy()
+        for idx in range(len(prediction['detection_scores'])):
+            output_dict = {
+                "detection_classes": prediction["detection_classes"][idx],
+                "detection_scores": prediction["detection_scores"][idx],
+                "detection_boxes": prediction["detection_boxes"][idx].numpy()
+            }
+            self.annotations['frames'].append(
+                {
+                    "annotations": fn(output_dict, self.category_index)
                 }
-                self.annotations['frames'].append(
-                    {
-                        "annotations": fn(output_dict, self.category_index)
-                    }
-                )
-                self.progress.set_description(f"Running with the local counter {local_counter}")
-                local_counter += 1
-                self.progress.update(1)
+            )
+            # self.progress.set_description(
+            #     f"Running with the local counter {local_counter}")
+            # local_counter += 1
 
-        else:
-            start = 0
-            predictions = []
-            local_counter = 0
-            for end in range(self.batch_size, len(frames), self.batch_size):
-                input_tensor = tf.convert_to_tensor(
-                    np.asarray(frames[start: end])
-                )
-                prediction = self.model(input_tensor)
+        self.progress.update(1)
 
-                for idx in range(len(prediction['detection_scores'])):
-                    output_dict = {
-                        "detection_classes": prediction["detection_classes"][idx],
-                        "detection_scores": prediction["detection_scores"][idx],
-                        "detection_boxes": prediction["detection_boxes"][idx].numpy()
-                    }
-                    self.annotations['frames'].append(
-                        {
-                            "annotations": fn(output_dict, self.category_index)
-                        }
-                    )
-                    self.progress.set_description(f"Running with the local counter {local_counter}")
-                    local_counter += 1
+        path = os.path.join(self.directory, self.path.split("/")[-1])
 
-                start = end
-                self.progress.update(1)
-
-        if self.filename:
-            path = self.filename
-        else:
-            path = self.path
-
-        path = path+f"{self.current_frame}:{self.current_frame-self.batch_size}"
+        path = path + \
+            f"{self.current_frame}:{self.current_frame-self.batch_size}"
 
         pickle.dump(
             self.annotations,
