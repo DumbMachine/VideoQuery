@@ -133,12 +133,25 @@ def get_key_from_batch(something):
     max_objs = max([len(information[i]) for i in range(len(information))])
 
     clustering_data = []
-    for i in range(max_objs):
+    for i in range(max_objs+1):
         _data = []
         for j in range(len(information)):
             if len(information[j]) > i:
+                print(f"Appending data of length {i} more")
                 _data.append(information[j][i])
         clustering_data.append(_data)
+
+
+    clustering_data = []
+    # current loop is for the number of objects in the frame
+    for i in range(1, max_objs+1):
+        current_frames = []
+        for frame in information:
+            if len(frame) == i:
+                print(f"appending len of {i} now")
+                current_frames.append(frame)
+        clustering_data.append(current_frames)
+
 
     # The above output implies, we can divide these frame
     # into a max of 4 frames (considering the lowest last object occurance)
@@ -396,3 +409,8 @@ def parallel_frames(batch):
         return vecs, fidxs
     except Exception as e:
         return [], []
+
+"""
+Each object from the frame is clusterd
+
+"""

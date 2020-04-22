@@ -12,7 +12,7 @@ mention the usage of ssd in testing and things for ngtpy
 
    ![image](/home/dumbmachine/code/SVMWSN/paper_related/things/FrameComparison.png)
 
-   
+   Temporal consistency is preserved, and successive frames are grouped and put into the same hash bucket
 
 # DeepQuery: Content Based Video Search & Retrieval
 
