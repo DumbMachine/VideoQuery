@@ -22,7 +22,7 @@ Digital media, comprised largely of images and videos, has been on the rise in t
 
 We present **DeepQuery** a object detection based deep learning model which leverages the scenes from video clips to generate fixed sized vectors for videos. **These fixed sized vectors are used to retrieve videos from clips**. It offers a solution to efficient solution which balances the precision/accuracy with processing computation.
 
-On both, UFC101 and **a custom dataset containing clips from various tv shows and movies** , generates competitive performance in terms of runtime and accuracy. We also show that benefits of using our `algorithm` in a constraint   (videos). Code is available at: https://github.com//dumbmachine/deepquery
+On UFC101 generates competitive performance in terms of run-time and accuracy. To validate our approach in a “wild” environment, we also test our algorithm on two datasets, MovieClips and subset of YouTube-8M dataset. We also show that benefits of using our `algorithm` in a constraint   (videos). Code is available at: https://github.com//dumbmachine/deepquery (Will be made public before the release of the paper)
 
 Key words: Content-based video retrieval, Video Database, object detection, approximate nearest neighbour search.
 
@@ -47,6 +47,8 @@ Recently, deep CNN has been successfully applied on many vision tasks, such as i
 We present a novel solution for Content Based Video Retrieval, wherein the Objects, their respective positions and histogram are indexed. An object detection model is used to obtain inference of each frame. The inference information is usedcd to cluster the individual frames to obtain key frame representations of each scene of video. We define a "scene" as set of frames in video wherein the total change in information,  prominently the objects, their location and background , is minimal. This helps use to remove redundant frames while making sure nearly all unique frame information is not lost. 
 
 Our proposed solution is highly scalable, the inference of video frames can easily be run on multiple gpus and the algorithm used for clustering of video frames is also highly parallelized. This system makes use of the resources available to it efficiently. Our searching algorithm also offer the advantage of `tables of indexes` reducing the number of comparisons by only comparing with frames having similar number of objects. ANN from ngtpy is used for comparison.
+
+![image](/home/dumbmachine/code/SVMWSN/paper_related/things/download.png)
 
 ### 2. Related Work:
 
