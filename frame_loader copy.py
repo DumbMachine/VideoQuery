@@ -200,16 +200,15 @@ class FrameLoader:
                     "annotations": fn(output_dict, self.category_index)
                 }
             )
-            # self.progress.set_description(
-            #     f"Running with the local counter {local_counter}")
-            # local_counter += 1
 
         self.progress.update(1)
 
+    def save_annotations(self):
+        """Will save the annotations from self.annotations
+        """
+        if self.annotations is None:
+            raise Exception("The annotations are None, can't save them.")
         path = os.path.join(self.directory, self.path.split("/")[-1])
-
-        path = path + \
-            f"{self.current_frame}:{self.current_frame-self.batch_size}"
 
         pickle.dump(
             self.annotations,
@@ -217,3 +216,4 @@ class FrameLoader:
                 f"{path}-annotations.pkl", "wb"
             )
         )
+
