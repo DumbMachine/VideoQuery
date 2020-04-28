@@ -25,6 +25,7 @@ SAMPLE_VIDEO = os.path.join(DATA_PATH, "sample_sample.mp4")
 CATEGORY_INDEX = os.path.join(DATA_PATH, "category_index.pkl")
 
 FRAME_VIDEO_PATH = os.path.join(DATA_PATH, "videos")
+FRAME_VIDEO_PATH = "/media/dumbmachine/PleaseWork/videos"
 FRAME_NUMBER_PATH = os.path.join(DATA_PATH, "frame_numbers")
 FRAME_VECTORS_PATH = os.path.join(DATA_PATH, "vectors")
 FRAME_ANNOTATION_PATH = os.path.join(DATA_PATH, "annotations")
@@ -230,7 +231,7 @@ def save_vec_with_histograms(filename):
     Arguments:
         obj {list} -- list of a few values required
     """
-    dims = 18
+    dims = 10
     vpath = os.path.join(FRAME_VIDEO_PATH + f"/{filename}")
     vecs_path = os.path.join(FRAME_VECTORS_PATH +
                              f"/{filename.replace('.avi', '.pkl')}")
